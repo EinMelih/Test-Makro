@@ -15,3 +15,4 @@ c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.Gene
 c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.csproj.CoreCompileInputs.cache
 c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.exe
 c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.pdb
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.sourcelink.json

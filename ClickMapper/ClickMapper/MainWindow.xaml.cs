@@ -7,7 +7,6 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using ClickMapper.Controls;
 using ClickMapper.Native;
@@ -25,31 +24,19 @@ namespace ClickMapper
         private ClickPuck _puckAwaitingKeyAssign = null;
         private int _puckCounter = 0;
 
+        // Spawn Position
+        private double _spawnX = 100;
+        private double _spawnY = 100;
+        private bool _isSettingSpawnPosition = false;
+
+        // Control Panel dragging
+        private bool _isDraggingPanel = false;
+        private Point _panelDragStart;
+
+        // Profile directory
+        private string _profileDirectory;
+
         #region Win32 API for Multi-Monitor
-
-        [DllImport("user32.dll")]
-        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MONITORINFO
-        {
-            public int cbSize;
-            public RECT rcMonitor;
-            public RECT rcWork;
-            public uint dwFlags;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
 
         [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int nIndex);
@@ -65,7 +52,21 @@ namespace ClickMapper
         {
             InitializeComponent();
             InitializeKeyboardHook();
+            InitializeProfileDirectory();
             UpdatePuckCount();
+            RefreshProfileList();
+        }
+
+        private void InitializeProfileDirectory()
+        {
+            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            string exeDir = Path.GetDirectoryName(exePath);
+            _profileDirectory = Path.Combine(exeDir, "profiles");
+            
+            if (!Directory.Exists(_profileDirectory))
+            {
+                Directory.CreateDirectory(_profileDirectory);
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -80,7 +81,107 @@ namespace ClickMapper
             Top = top;
             Width = width;
             Height = height;
+
+            // Spawn Marker initial positionieren
+            UpdateSpawnMarker();
         }
+
+        #region Control Panel Dragging
+
+        private void ControlPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Nur draggen wenn nicht auf einem Button geklickt
+            if (e.Source is Button) return;
+
+            _isDraggingPanel = true;
+            _panelDragStart = e.GetPosition(MainGrid);
+            ControlPanel.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void ControlPanel_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDraggingPanel) return;
+
+            Point currentPos = e.GetPosition(MainGrid);
+            double deltaX = currentPos.X - _panelDragStart.X;
+            double deltaY = currentPos.Y - _panelDragStart.Y;
+
+            ControlPanelTransform.X += deltaX;
+            ControlPanelTransform.Y += deltaY;
+
+            _panelDragStart = currentPos;
+            e.Handled = true;
+        }
+
+        private void ControlPanel_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingPanel)
+            {
+                _isDraggingPanel = false;
+                ControlPanel.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+
+        #region Spawn Position
+
+        private void SetSpawnButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isSettingSpawnPosition = true;
+            SpawnModeHint.Visibility = Visibility.Visible;
+            
+            // Temporär einen klickbaren Hintergrund setzen (fast unsichtbar aber klickbar)
+            MainGrid.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+            MainGrid.Cursor = Cursors.Cross;
+            MainGrid.MouseLeftButtonDown += MainGrid_SetSpawnClick;
+        }
+
+        private void MainGrid_SetSpawnClick(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isSettingSpawnPosition) return;
+            
+            // Ignoriere Klicks auf das Control Panel
+            if (IsClickOnControlPanel(e)) return;
+
+            Point pos = e.GetPosition(PuckCanvas);
+            _spawnX = pos.X;
+            _spawnY = pos.Y;
+
+            UpdateSpawnMarker();
+            EndSpawnPositionMode();
+            e.Handled = true;
+        }
+
+        private bool IsClickOnControlPanel(MouseButtonEventArgs e)
+        {
+            Point clickPos = e.GetPosition(ControlPanel);
+            return clickPos.X >= 0 && clickPos.Y >= 0 
+                && clickPos.X <= ControlPanel.ActualWidth 
+                && clickPos.Y <= ControlPanel.ActualHeight;
+        }
+
+        private void UpdateSpawnMarker()
+        {
+            Canvas.SetLeft(SpawnMarker, _spawnX - 15);
+            Canvas.SetTop(SpawnMarker, _spawnY - 15);
+            SpawnMarker.Visibility = Visibility.Visible;
+        }
+
+        private void EndSpawnPositionMode()
+        {
+            _isSettingSpawnPosition = false;
+            SpawnModeHint.Visibility = Visibility.Collapsed;
+            
+            // Hintergrund wieder transparent machen
+            MainGrid.Background = Brushes.Transparent;
+            MainGrid.Cursor = Cursors.Arrow;
+            MainGrid.MouseLeftButtonDown -= MainGrid_SetSpawnClick;
+        }
+
+        #endregion
 
         #region Keyboard Hook
 
@@ -92,6 +193,14 @@ namespace ClickMapper
 
         private void OnGlobalKeyPressed(object sender, KeyboardHookEventArgs e)
         {
+            // ESC zum Abbrechen der Spawn-Position-Einstellung
+            if (_isSettingSpawnPosition && e.Key == Key.Escape)
+            {
+                Dispatcher.Invoke(() => EndSpawnPositionMode());
+                e.Handled = true;
+                return;
+            }
+
             // Im Edit-Modus: Prüfen ob wir auf Tastenzuweisung warten
             if (_isEditMode && _puckAwaitingKeyAssign != null)
             {
@@ -115,15 +224,10 @@ namespace ClickMapper
 
         private Point GetPuckCenterScreenPosition(ClickPuck puck)
         {
-            // Position des Pucks im Canvas
             double left = Canvas.GetLeft(puck);
             double top = Canvas.GetTop(puck);
-
-            // Mitte des Pucks berechnen
             double centerX = left + puck.ActualWidth / 2;
             double centerY = top + puck.ActualHeight / 2;
-
-            // In Bildschirmkoordinaten umwandeln
             Point screenPoint = PuckCanvas.PointToScreen(new Point(centerX, centerY));
             return screenPoint;
         }
@@ -146,6 +250,7 @@ namespace ClickMapper
                 ModeLabel.Foreground = new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50));
 
                 AddPuckButton.Visibility = Visibility.Visible;
+                SetSpawnButton.Visibility = Visibility.Visible;
                 SetPucksEditMode(true);
                 _keyboardHook.Stop();
             }
@@ -159,6 +264,7 @@ namespace ClickMapper
                 ModeLabel.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x98, 0x00));
 
                 AddPuckButton.Visibility = Visibility.Collapsed;
+                SetSpawnButton.Visibility = Visibility.Collapsed;
                 SetPucksEditMode(false);
                 _keyboardHook.Start();
             }
@@ -174,18 +280,17 @@ namespace ClickMapper
                 }
             }
 
-            // Im Play-Mode: Gesamtes Canvas und Pucks komplett durchklickbar
             if (!editMode)
             {
-                // Verstecke Pucks komplett im Play-Mode damit Klicks durchgehen
                 PuckCanvas.Visibility = Visibility.Hidden;
                 PuckCanvas.IsHitTestVisible = false;
+                SpawnMarker.Visibility = Visibility.Collapsed;
             }
             else
             {
-                // Edit Mode: Alles sichtbar und interaktiv
                 PuckCanvas.Visibility = Visibility.Visible;
                 PuckCanvas.IsHitTestVisible = true;
+                SpawnMarker.Visibility = Visibility.Visible;
             }
         }
 
@@ -204,13 +309,11 @@ namespace ClickMapper
             ClickPuck puck = new ClickPuck();
             puck.PuckId = _puckCounter;
 
-            // Standard-Position: Mitte des Bildschirms, versetzt
-            double offsetX = (_puckCounter - 1) % 5 * 70;
-            double offsetY = (_puckCounter - 1) / 5 * 70;
-            Canvas.SetLeft(puck, 100 + offsetX);
-            Canvas.SetTop(puck, 100 + offsetY);
+            // Neue Pucks an der Spawn-Position erstellen (mit leichtem Offset)
+            int offset = (PuckCanvas.Children.Count % 10) * 35;
+            Canvas.SetLeft(puck, _spawnX + (offset % 175));
+            Canvas.SetTop(puck, _spawnY + (offset / 175) * 35);
 
-            // Events registrieren
             puck.RequestKeyAssignment += Puck_RequestKeyAssignment;
             puck.RequestDelete += Puck_RequestDelete;
 
@@ -231,13 +334,10 @@ namespace ClickMapper
         {
             if (sender is ClickPuck puck)
             {
-                // Aus dem Mapping entfernen
                 if (puck.AssignedKey.HasValue && _keyToPuckMap.ContainsKey(puck.AssignedKey.Value))
                 {
                     _keyToPuckMap.Remove(puck.AssignedKey.Value);
                 }
-
-                // Aus dem Canvas entfernen
                 PuckCanvas.Children.Remove(puck);
                 UpdatePuckCount();
             }
@@ -247,27 +347,22 @@ namespace ClickMapper
         {
             if (_puckAwaitingKeyAssign == null) return;
 
-            // Alte Zuweisung entfernen falls vorhanden
             if (_puckAwaitingKeyAssign.AssignedKey.HasValue)
             {
                 _keyToPuckMap.Remove(_puckAwaitingKeyAssign.AssignedKey.Value);
             }
 
-            // Prüfen ob Taste bereits belegt
             if (_keyToPuckMap.ContainsKey(key))
             {
-                // Alte Belegung vom anderen Puck entfernen
                 ClickPuck oldPuck = _keyToPuckMap[key];
                 oldPuck.AssignedKey = null;
                 oldPuck.UpdateDisplay();
             }
 
-            // Neue Zuweisung
             _puckAwaitingKeyAssign.AssignedKey = key;
             _puckAwaitingKeyAssign.UpdateDisplay();
             _keyToPuckMap[key] = _puckAwaitingKeyAssign;
 
-            // Dialog schließen
             _puckAwaitingKeyAssign = null;
             KeyAssignDialog.Visibility = Visibility.Collapsed;
         }
@@ -309,9 +404,16 @@ namespace ClickMapper
             Application.Current.Shutdown();
         }
 
-        // Tastatureingaben für Key-Assignment abfangen wenn Dialog offen
         protected override void OnPreviewKeyDown(KeyEventArgs e)
         {
+            // ESC zum Abbrechen der Spawn-Position-Einstellung
+            if (_isSettingSpawnPosition && e.Key == Key.Escape)
+            {
+                EndSpawnPositionMode();
+                e.Handled = true;
+                return;
+            }
+
             if (_puckAwaitingKeyAssign != null)
             {
                 AssignKeyToPuck(e.Key);
@@ -323,7 +425,7 @@ namespace ClickMapper
 
         #endregion
 
-        #region Save/Load Configuration
+        #region Save/Load Configuration (Multiple Profiles)
 
         private class PuckConfig
         {
@@ -335,21 +437,58 @@ namespace ClickMapper
 
         private class ConfigFile
         {
+            public double SpawnX { get; set; }
+            public double SpawnY { get; set; }
             public List<PuckConfig> Pucks { get; set; }
         }
 
-        private string GetConfigPath()
+        private string GetProfilePath(string profileName)
         {
-            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string exeDir = Path.GetDirectoryName(exePath);
-            return Path.Combine(exeDir, "clickmapper_config.json");
+            string safeName = string.Join("_", profileName.Split(Path.GetInvalidFileNameChars()));
+            return Path.Combine(_profileDirectory, safeName + ".json");
+        }
+
+        private void RefreshProfileList()
+        {
+            ProfileList.Items.Clear();
+            
+            if (Directory.Exists(_profileDirectory))
+            {
+                var files = Directory.GetFiles(_profileDirectory, "*.json");
+                foreach (var file in files)
+                {
+                    string name = Path.GetFileNameWithoutExtension(file);
+                    ProfileList.Items.Add(name);
+                }
+            }
+        }
+
+        private void ProfileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ProfileList.SelectedItem != null)
+            {
+                ProfileNameBox.Text = ProfileList.SelectedItem.ToString();
+            }
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var config = new ConfigFile { Pucks = new List<PuckConfig>() };
+                string profileName = ProfileNameBox.Text.Trim();
+                if (string.IsNullOrEmpty(profileName))
+                {
+                    MessageBox.Show("Bitte einen Profilnamen eingeben.", "Hinweis", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var config = new ConfigFile 
+                { 
+                    SpawnX = _spawnX,
+                    SpawnY = _spawnY,
+                    Pucks = new List<PuckConfig>() 
+                };
 
                 foreach (UIElement child in PuckCanvas.Children)
                 {
@@ -365,11 +504,11 @@ namespace ClickMapper
                     }
                 }
 
-                // Einfache JSON-Serialisierung ohne externe Bibliotheken
                 string json = SerializeConfig(config);
-                File.WriteAllText(GetConfigPath(), json, Encoding.UTF8);
+                File.WriteAllText(GetProfilePath(profileName), json, Encoding.UTF8);
 
-                MessageBox.Show($"Konfiguration gespeichert!\n{config.Pucks.Count} Pucks", 
+                RefreshProfileList();
+                MessageBox.Show($"Profil '{profileName}' gespeichert!\n{config.Pucks.Count} Pucks", 
                     "Gespeichert", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -383,16 +522,29 @@ namespace ClickMapper
         {
             try
             {
-                string configPath = GetConfigPath();
+                string profileName = ProfileNameBox.Text.Trim();
+                if (string.IsNullOrEmpty(profileName))
+                {
+                    MessageBox.Show("Bitte einen Profilnamen eingeben oder auswählen.", 
+                        "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string configPath = GetProfilePath(profileName);
                 if (!File.Exists(configPath))
                 {
-                    MessageBox.Show("Keine gespeicherte Konfiguration gefunden.", 
+                    MessageBox.Show($"Profil '{profileName}' nicht gefunden.", 
                         "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 string json = File.ReadAllText(configPath, Encoding.UTF8);
                 ConfigFile config = DeserializeConfig(json);
+
+                // Spawn-Position laden
+                _spawnX = config.SpawnX > 0 ? config.SpawnX : 100;
+                _spawnY = config.SpawnY > 0 ? config.SpawnY : 100;
+                UpdateSpawnMarker();
 
                 // Alle bestehenden Pucks entfernen
                 PuckCanvas.Children.Clear();
@@ -426,7 +578,7 @@ namespace ClickMapper
                 }
 
                 UpdatePuckCount();
-                MessageBox.Show($"Konfiguration geladen!\n{config.Pucks.Count} Pucks", 
+                MessageBox.Show($"Profil '{profileName}' geladen!\n{config.Pucks.Count} Pucks", 
                     "Geladen", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -436,11 +588,12 @@ namespace ClickMapper
             }
         }
 
-        // Einfache JSON-Serialisierung (ohne externe Bibliotheken)
         private string SerializeConfig(ConfigFile config)
         {
             var sb = new StringBuilder();
             sb.AppendLine("{");
+            sb.AppendLine($"  \"SpawnX\": {config.SpawnX.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
+            sb.AppendLine($"  \"SpawnY\": {config.SpawnY.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
             sb.AppendLine("  \"Pucks\": [");
 
             for (int i = 0; i < config.Pucks.Count; i++)
@@ -457,19 +610,47 @@ namespace ClickMapper
             return sb.ToString();
         }
 
-        // Einfache JSON-Deserialisierung
         private ConfigFile DeserializeConfig(string json)
         {
             var config = new ConfigFile { Pucks = new List<PuckConfig>() };
 
-            // Finde alle Puck-Objekte
+            // SpawnX
+            int spawnXIdx = json.IndexOf("\"SpawnX\"");
+            if (spawnXIdx >= 0)
+            {
+                int colonIdx = json.IndexOf(":", spawnXIdx);
+                int endIdx = json.IndexOfAny(new[] { ',', '}' }, colonIdx);
+                string val = json.Substring(colonIdx + 1, endIdx - colonIdx - 1).Trim();
+                double spawnX;
+                if (double.TryParse(val, System.Globalization.NumberStyles.Any, 
+                    System.Globalization.CultureInfo.InvariantCulture, out spawnX))
+                {
+                    config.SpawnX = spawnX;
+                }
+            }
+
+            // SpawnY
+            int spawnYIdx = json.IndexOf("\"SpawnY\"");
+            if (spawnYIdx >= 0)
+            {
+                int colonIdx = json.IndexOf(":", spawnYIdx);
+                int endIdx = json.IndexOfAny(new[] { ',', '}' }, colonIdx);
+                string val = json.Substring(colonIdx + 1, endIdx - colonIdx - 1).Trim();
+                double spawnY;
+                if (double.TryParse(val, System.Globalization.NumberStyles.Any, 
+                    System.Globalization.CultureInfo.InvariantCulture, out spawnY))
+                {
+                    config.SpawnY = spawnY;
+                }
+            }
+
+            // Pucks array
             int pucksStart = json.IndexOf("[");
             int pucksEnd = json.LastIndexOf("]");
             if (pucksStart < 0 || pucksEnd < 0) return config;
 
             string pucksSection = json.Substring(pucksStart + 1, pucksEnd - pucksStart - 1);
 
-            // Einfacher Parser für Puck-Objekte
             int braceDepth = 0;
             int objStart = -1;
 

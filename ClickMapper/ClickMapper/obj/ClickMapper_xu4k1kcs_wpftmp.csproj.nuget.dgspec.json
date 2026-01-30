@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "restore": {
+    "c:\\projects\\Test Makro\\ClickMapper\\ClickMapper\\ClickMapper.csproj": {}
+  },
+  "projects": {
+    "c:\\projects\\Test Makro\\ClickMapper\\ClickMapper\\ClickMapper.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "c:\\projects\\Test Makro\\ClickMapper\\ClickMapper\\ClickMapper.csproj",
+        "projectName": "ClickMapper",
+        "projectPath": "c:\\projects\\Test Makro\\ClickMapper\\ClickMapper\\ClickMapper.csproj",
+        "packagesPath": "C:\\Users\\Yildirim\\.nuget\\packages\\",
+        "outputPath": "c:\\projects\\Test Makro\\ClickMapper\\ClickMapper\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\ComponentOne\\WinForms Edition\\bin\\v5\\",
+          "C:\\Program Files (x86)\\ComponentOne\\WinForms Edition\\bin\\v6\\",
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Yildirim\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\ComponentOne.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net472"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\ComponentOne\\Packages": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "\\\\cgnnas01\\software\\maringo-nuget": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net472": {
+            "targetAlias": "net472",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net472": {
+          "targetAlias": "net472",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102\\RuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}
