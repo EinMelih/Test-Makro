@@ -1,0 +1,2 @@
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\ClickMapper.csproj.AssemblyReference.cache
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\ClickMapper.csproj.CoreCompileInputs.cache

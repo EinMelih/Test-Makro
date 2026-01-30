@@ -1,0 +1,17 @@
+c:\projects\Test Makro\ClickMapper\ClickMapper\bin\Debug\net472\ClickMapper.exe.config
+c:\projects\Test Makro\ClickMapper\ClickMapper\bin\Debug\net472\ClickMapper.exe
+c:\projects\Test Makro\ClickMapper\ClickMapper\bin\Debug\net472\ClickMapper.pdb
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.csproj.AssemblyReference.cache
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\Controls\ClickPuck.baml
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\App.baml
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\Controls\ClickPuck.g.cs
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\MainWindow.g.cs
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\App.g.cs
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper_MarkupCompile.cache
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper_MarkupCompile.lref
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\MainWindow.baml
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.g.resources
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.GeneratedMSBuildEditorConfig.editorconfig
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.csproj.CoreCompileInputs.cache
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.exe
+c:\projects\Test Makro\ClickMapper\ClickMapper\obj\Debug\net472\ClickMapper.pdb

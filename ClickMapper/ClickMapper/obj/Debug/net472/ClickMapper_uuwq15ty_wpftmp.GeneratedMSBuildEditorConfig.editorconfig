@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = ClickMapper
+build_property.ProjectDir = c:\projects\Test Makro\ClickMapper\ClickMapper\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 
